@@ -24,7 +24,7 @@ A userscript for saving an X post as a PNG image. It adds **Save post as image**
 
 Install the build attached to the latest GitHub release:
 
-<https://github.com/PY-DNG/x-post-screenshot/releases/latest/download/x-post-screenshot.user.js>
+<https://github.com/PYUDNG/x-post-screenshot/releases/latest/download/x-post-screenshot.user.js>
 
 ### Greasyfork
 

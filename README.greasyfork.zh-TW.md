@@ -42,7 +42,7 @@
 
 原始碼和問題回報：
 
-<https://github.com/PY-DNG/x-post-screenshot>
+<https://github.com/PYUDNG/x-post-screenshot>
 
 本 Greasyfork 頁面是此腳本的安裝來源。
 

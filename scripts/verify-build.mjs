@@ -105,14 +105,14 @@ if (errors.length === 0) {
   }
 
   if (
-    !/@updateURL\s+https:\/\/github\.com\/PY-DNG\/x-post-screenshot\/releases\/latest\/download\/x-post-screenshot\.user\.js/.test(
+    !/@updateURL\s+https:\/\/github\.com\/PYUDNG\/x-post-screenshot\/releases\/latest\/download\/x-post-screenshot\.user\.js/.test(
       githubMeta,
     )
   ) {
     fail('github build is missing the release @updateURL');
   }
   if (
-    !/@downloadURL\s+https:\/\/github\.com\/PY-DNG\/x-post-screenshot\/releases\/latest\/download\/x-post-screenshot\.user\.js/.test(
+    !/@downloadURL\s+https:\/\/github\.com\/PYUDNG\/x-post-screenshot\/releases\/latest\/download\/x-post-screenshot\.user\.js/.test(
       githubMeta,
     )
   ) {

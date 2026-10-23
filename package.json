@@ -5,14 +5,14 @@
   "type": "module",
   "description": "Userscript for saving X/Twitter posts as images.",
   "license": "MIT",
-  "author": "PY-DNG",
+  "author": "PYUDNG",
   "repository": {
     "type": "git",
-    "url": "https://github.com/PY-DNG/x-post-screenshot.git"
+    "url": "https://github.com/PYUDNG/x-post-screenshot.git"
   },
-  "homepage": "https://github.com/PY-DNG/x-post-screenshot#readme",
+  "homepage": "https://github.com/PYUDNG/x-post-screenshot#readme",
   "bugs": {
-    "url": "https://github.com/PY-DNG/x-post-screenshot/issues"
+    "url": "https://github.com/PYUDNG/x-post-screenshot/issues"
   },
   "packageManager": "pnpm@10.6.5",
   "engines": {

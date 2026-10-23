@@ -11,7 +11,7 @@ const packageJson = JSON.parse(
 };
 const iconSvg = readFileSync(new URL('./assets/icon.svg', import.meta.url), 'utf8').trim();
 const iconDataUrl = `data:image/svg+xml;base64,${Buffer.from(iconSvg).toString('base64')}`;
-const repositoryUrl = 'https://github.com/PY-DNG/x-post-screenshot';
+const repositoryUrl = 'https://github.com/PYUDNG/x-post-screenshot';
 const releaseUrl = `${repositoryUrl}/releases/latest/download/x-post-screenshot.user.js`;
 
 export default defineConfig(({ mode }) => {
@@ -43,7 +43,7 @@ export default defineConfig(({ mode }) => {
           },
           namespace: repositoryUrl,
           version: packageJson.version,
-          author: 'PY-DNG',
+          author: 'PYUDNG',
           license: 'MIT',
           icon: iconDataUrl,
           homepageURL: repositoryUrl,

@@ -42,7 +42,7 @@ Production builds do not print logs to the console. Up to 100 diagnostic entries
 
 Source code and the issue tracker are available at:
 
-<https://github.com/PY-DNG/x-post-screenshot>
+<https://github.com/PYUDNG/x-post-screenshot>
 
 This Greasyfork page is the installation source for this listing.
 

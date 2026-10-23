@@ -24,7 +24,7 @@
 
 安装最新 GitHub Release 中的构建：
 
-<https://github.com/PY-DNG/x-post-screenshot/releases/latest/download/x-post-screenshot.user.js>
+<https://github.com/PYUDNG/x-post-screenshot/releases/latest/download/x-post-screenshot.user.js>
 
 ### Greasyfork
 
