@@ -4,6 +4,18 @@ All notable changes to this project are documented in this file.
 
 The project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.2] - 2026-10-23
+
+### Added
+
+- Show a state-specific inline icon for progress, success, partial success and error toast messages.
+
+### Fixed
+
+- Match native X menu-item hover and keyboard-focus feedback in both the legacy and Base UI menu variants.
+- Align the injected camera icon and label with native menu items.
+- Exclude the reply-sort and quotes row from post-detail screenshots while preserving the engagement bar.
+
 ## [0.1.1] - 2026-10-23
 
 ### Fixed

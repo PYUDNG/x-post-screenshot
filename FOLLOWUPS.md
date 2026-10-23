@@ -1,8 +1,16 @@
 # Follow-ups after v0.1.1
 
-Status: **open, intentionally not implemented yet**.
-Project version: `0.1.1`.
-Suggested next version: `0.1.2` (patch).
+Status: **resolved in v0.1.2**. This file is retained as the investigation and
+regression-test record for the four reported issues.
+Project version: `0.1.2`.
+Suggested next version: `0.1.3` (patch).
+
+## Resolved in v0.1.2
+
+- Added native Hover/focus feedback for legacy and Base UI menus.
+- Matched the camera icon size and text alignment to native menu items.
+- Added state-specific toast icons, including a distinct partial-success state.
+- Excluded the detail-page reply-sort/quotes row and restored it after capture.
 
 Last investigation: 2026-10-23. The two X menu variants were checked against
 different sessions:
