@@ -6,6 +6,8 @@
 
 A userscript for saving an X post as a PNG image. It adds **Save post as image** to the native post **More** menu and keeps the result close to what is currently visible on screen.
 
+> **AI-generated code:** The code in this project was generated entirely by AI.
+
 ## Features
 
 - Adds one native-looking item to the post menu on the X home timeline and post detail page.

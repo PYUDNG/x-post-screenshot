@@ -4,6 +4,8 @@ Install this script from the install button on this Greasyfork page.
 
 Save an X post as a PNG image directly from the native post **More** menu. The capture follows the current post card, keeps the current carousel position, and uses the current video/GIF frame when available.
 
+> **AI-generated code:** The code in this project was generated entirely by AI.
+
 ## Features
 
 - Adds **Save post as image** to the X post menu.
