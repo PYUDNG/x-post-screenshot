@@ -1,3 +1,5 @@
+import { native } from './native';
+
 export interface GmRequestResult {
   status: number;
   statusText: string;
@@ -103,6 +105,7 @@ export function gmDownloadBlob(options: GmDownloadOptions): Promise<boolean> {
   return new Promise((resolve) => {
     let settled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let objectUrl = '';
     const finish = (ok: boolean) => {
       if (settled) {
         return;
@@ -111,12 +114,22 @@ export function gmDownloadBlob(options: GmDownloadOptions): Promise<boolean> {
       if (timer !== undefined) {
         clearTimeout(timer);
       }
+      if (objectUrl) {
+        setTimeout(() => {
+          try {
+            native.URL.revokeObjectURL(objectUrl);
+          } catch {
+            // The browser may already have revoked it.
+          }
+        }, 5_000);
+      }
       resolve(ok);
     };
 
     try {
+      objectUrl = native.URL.createObjectURL(options.blob);
       (download as (details: unknown) => GmAbortHandle)({
-        url: options.blob,
+        url: objectUrl,
         name: options.name,
         saveAs: false,
         timeout: options.timeoutMs ?? 30_000,

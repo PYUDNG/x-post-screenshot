@@ -41,6 +41,7 @@ const SHADOW_CSS = `
 
 let host: HTMLDivElement | null = null;
 let content: HTMLDivElement | null = null;
+let usingShadowRoot = false;
 let timer: number | null = null;
 
 function ensureToast(): HTMLDivElement | null {
@@ -57,6 +58,7 @@ function ensureToast(): HTMLDivElement | null {
   host.style.cssText =
     'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;display:none;pointer-events:none;';
   const shadow = nativeAttachClosedShadow(host);
+  usingShadowRoot = Boolean(shadow);
   content = document.createElement('div');
   content.className = 'toast';
   content.setAttribute('role', 'status');
@@ -75,7 +77,7 @@ function ensureToast(): HTMLDivElement | null {
     shadow.append(style, content);
   } else {
     content.style.cssText =
-      'box-sizing:border-box;display:flex;align-items:center;gap:9px;max-width:min(440px,calc(100vw - 32px));padding:10px 15px;border-radius:999px;border:1px solid rgba(127,127,127,.35);box-shadow:0 8px 28px rgba(0,0,0,.28);font:500 14px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;pointer-events:none;';
+      'box-sizing:border-box;display:flex;align-items:center;gap:9px;max-width:min(440px,calc(100vw - 32px));padding:10px 15px;border-radius:999px;border:1px solid rgba(127,127,127,.35);box-shadow:0 8px 28px rgba(0,0,0,.28);font:500 14px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;pointer-events:none;background:var(--xps-bg,#fff);color:var(--xps-fg,#0f1419);';
     host.append(content);
   }
 
@@ -95,13 +97,19 @@ export function showToast(kind: ToastKind, message: string, durationMs = 3200): 
   }
 
   const theme = getPageTheme();
+  const toastBackground = theme.dark ? '#1b1f24' : '#ffffff';
+  const toastForeground = theme.dark ? '#e7e9ea' : '#0f1419';
   node.dataset.kind = kind;
-  node.style.setProperty('--xps-bg', theme.background);
-  node.style.setProperty('--xps-fg', theme.foreground);
+  node.style.setProperty('--xps-bg', toastBackground);
+  node.style.setProperty('--xps-fg', toastForeground);
   node.style.setProperty(
     '--xps-border',
-    theme.dark ? 'rgba(255,255,255,.22)' : 'rgba(15,20,25,.18)',
+    theme.dark ? 'rgba(255,255,255,.25)' : 'rgba(15,20,25,.18)',
   );
+  if (!usingShadowRoot) {
+    node.style.backgroundColor = toastBackground;
+    node.style.color = toastForeground;
+  }
   node.setAttribute('role', kind === 'error' ? 'alert' : 'status');
 
   const textNode = node.querySelector('.text') ?? node;

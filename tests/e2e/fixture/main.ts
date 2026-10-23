@@ -1,5 +1,6 @@
 import { captureArticle } from '../../../src/platform/capture';
 import { buildCaptureTargetFromArticle, installMenuIntegration } from '../../../src/platform/menu';
+import { saveBlob } from '../../../src/platform/download';
 import { setResourceTransportForTesting } from '../../../src/platform/resource-fetch';
 import { hideToast, showToast } from '../../../src/platform/toast';
 import { getPageTheme } from '../../../src/platform/theme';
@@ -42,6 +43,10 @@ installMenuIntegration(() => {
 });
 
 const caret = document.querySelector<HTMLButtonElement>('#caret');
+document.querySelector<HTMLButtonElement>('#download-test')?.addEventListener('click', () => {
+  void saveBlob(new Blob(['download-test'], { type: 'text/plain' }), 'xps-test.txt');
+});
+
 caret?.addEventListener('click', () => {
   const menuHost = document.querySelector<HTMLElement>('#menu-host');
   if (!menuHost || menuHost.querySelector('[role="menu"]')) {

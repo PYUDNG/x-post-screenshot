@@ -1,3 +1,4 @@
+import { statSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
@@ -25,6 +26,16 @@ test('injects the save item into a post menu', async ({ page }) => {
   await expect(menuItem).toBeVisible();
   await menuItem.click();
   expect(await page.evaluate(() => window.__xpsTest.menuClicked)).toBe(true);
+});
+
+test('downloads through a Blob URL without an empty file', async ({ page }) => {
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('#download-test').click();
+  const download = await downloadPromise;
+  const path = await download.path();
+  expect(download.suggestedFilename()).toBe('xps-test.txt');
+  expect(path).toBeTruthy();
+  expect(statSync(path!).size).toBeGreaterThan(0);
 });
 
 test('uses an isolated closed shadow root for the toast', async ({ page }) => {

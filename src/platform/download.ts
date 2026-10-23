@@ -25,10 +25,10 @@ function triggerAnchorDownload(blob: Blob, filename: string): boolean {
 }
 
 export async function saveBlob(blob: Blob, filename: string): Promise<boolean> {
-  if (await gmDownloadBlob({ blob, name: filename })) {
+  if (triggerAnchorDownload(blob, filename)) {
     return true;
   }
-  return triggerAnchorDownload(blob, filename);
+  return gmDownloadBlob({ blob, name: filename });
 }
 
 export function saveText(
