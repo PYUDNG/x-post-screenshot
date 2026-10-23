@@ -3,6 +3,7 @@ import type { CaptureOptions, CaptureResult, CaptureTarget } from '../types';
 import { XpsError } from './errors';
 import { logger } from './logging';
 import {
+  nativeClosest,
   nativeGetComputedStyle,
   nativeSetTimeout,
   nativeClearTimeout,
@@ -167,6 +168,67 @@ function videoFrame(video: HTMLVideoElement): string | null {
   return null;
 }
 
+const QUOTE_PATH_PATTERN = /\/status\/(\d+)\/(?:_engagements\/)?quotes(?:[?#]|$)/;
+
+export function findStatusQuoteRow(
+  article: HTMLElement,
+  statusId: string | null,
+): HTMLElement | null {
+  const quoteLinks = nativeQuerySelectorAll<HTMLAnchorElement>(article, 'a[href*="/quotes"]');
+  const quoteLink = quoteLinks.find((link) => {
+    if (nativeClosest(link, 'article') !== article) {
+      return false;
+    }
+    const match = (link.getAttribute('href') ?? '').match(QUOTE_PATH_PATTERN);
+    return Boolean(match?.[1]) && (!statusId || match?.[1] === statusId);
+  });
+  if (!quoteLink) {
+    return null;
+  }
+
+  let candidate = quoteLink.parentElement;
+  while (candidate && candidate !== article) {
+    const hasSortTrigger = nativeQuerySelectorAll(
+      candidate,
+      '[aria-haspopup="menu"], [aria-haspopup="listbox"]',
+    ).length;
+    const hasEngagementAction = nativeQuerySelectorAll(
+      candidate,
+      '[data-engagement-action]',
+    ).length;
+    if (hasSortTrigger > 0 && hasEngagementAction === 0) {
+      return candidate;
+    }
+    candidate = candidate.parentElement;
+  }
+  return null;
+}
+
+function hideDetailQuoteRow(
+  article: HTMLElement,
+  statusId: string | null,
+  restore: Array<() => void>,
+): void {
+  const row = findStatusQuoteRow(article, statusId);
+  if (!row) {
+    return;
+  }
+
+  const display = row.style.getPropertyValue('display');
+  const priority = row.style.getPropertyPriority('display');
+  row.style.setProperty('display', 'none', 'important');
+  restore.push(() => {
+    if (display) {
+      row.style.setProperty('display', display, priority);
+    } else {
+      row.style.removeProperty('display');
+    }
+  });
+  logger.debugLog('detail-quote-row-hidden', {
+    data: { statusId: statusId ?? 'unknown' },
+  });
+}
+
 function addVideoOverlays(article: HTMLElement, restore: Array<() => void>): boolean {
   let usedFallback = false;
   const videos = nativeQuerySelectorAll<HTMLVideoElement>(article, 'video');
@@ -238,6 +300,7 @@ export async function captureArticle(
     freezeScrollableContainers(article, restore);
     inlineSvgUseReferences(article, restore);
     partialRef.partial = addVideoOverlays(article, restore);
+    hideDetailQuoteRow(article, target.statusId, restore);
 
     const rect = article.getBoundingClientRect();
     const width = Math.max(1, Math.ceil(rect.width || article.clientWidth || 1));

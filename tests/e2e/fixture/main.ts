@@ -2,7 +2,12 @@ import { captureArticle } from '../../../src/platform/capture';
 import { buildCaptureTargetFromArticle, installMenuIntegration } from '../../../src/platform/menu';
 import { saveBlob } from '../../../src/platform/download';
 import { setResourceTransportForTesting } from '../../../src/platform/resource-fetch';
-import { hideToast, showToast } from '../../../src/platform/toast';
+import {
+  getToastSnapshotForTesting,
+  hideToast,
+  showToast,
+  type ToastKind,
+} from '../../../src/platform/toast';
 import { getPageTheme } from '../../../src/platform/theme';
 
 interface TestApi {
@@ -17,7 +22,20 @@ interface TestApi {
     overlayCount: number;
     scrollRestored: boolean;
   }>;
-  toast: () => { hostFound: boolean; closedShadow: boolean; textLeaked: boolean };
+  detailCapture: () => Promise<{
+    beforeHeight: number;
+    captureHeight: number;
+    footerSpace: number;
+    footerRestored: boolean;
+  }>;
+  toast: (kind?: ToastKind) => {
+    hostFound: boolean;
+    closedShadow: boolean;
+    textLeaked: boolean;
+    kind: ToastKind | null;
+    icon: string | null;
+    text: string;
+  };
   theme: () => ReturnType<typeof getPageTheme>;
 }
 
@@ -58,8 +76,18 @@ caret?.addEventListener('click', () => {
     'position:fixed;top:100px;left:100px;width:260px;background:#fff;padding:4px;';
   const item = document.createElement('div');
   item.setAttribute('role', 'menuitem');
-  item.textContent = 'Embed post';
-  item.style.cssText = 'padding:10px;';
+  item.className = 'menu-item';
+  const iconHolder = document.createElement('div');
+  iconHolder.className = 'menu-icon';
+  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  icon.setAttribute('class', 'x-icon');
+  icon.setAttribute('viewBox', '0 0 24 24');
+  icon.setAttribute('aria-hidden', 'true');
+  iconHolder.append(icon);
+  const textHolder = document.createElement('div');
+  textHolder.className = 'menu-text';
+  textHolder.textContent = 'Embed post';
+  item.append(iconHolder, textHolder);
   menu.append(item);
   menuHost.append(menu);
 });
@@ -155,13 +183,38 @@ window.__xpsTest = {
       scrollRestored: Math.abs(carousel.scrollLeft - scrollBefore) < 1,
     };
   },
-  toast: () => {
-    showToast('progress', 'shadow-test', 0);
+  detailCapture: async () => {
+    const article = document.querySelector<HTMLElement>('#detail-post');
+    const footer = document.querySelector<HTMLElement>('#detail-footer-row');
+    if (!article || !footer) {
+      throw new Error('Detail fixture is incomplete');
+    }
+    const beforeHeight = article.getBoundingClientRect().height;
+    const footerStyle = getComputedStyle(footer);
+    const footerSpace =
+      footer.getBoundingClientRect().height + Number.parseFloat(footerStyle.marginTop || '0');
+    const result = await captureArticle(buildCaptureTargetFromArticle(article), {
+      pixelRatio: 1,
+      timeoutMs: 30_000,
+    });
+    return {
+      beforeHeight,
+      captureHeight: result.height,
+      footerSpace,
+      footerRestored:
+        footer.style.getPropertyValue('display') === '' &&
+        footer.getBoundingClientRect().height > 0,
+    };
+  },
+  toast: (kind: ToastKind = 'progress') => {
+    const message = `${kind}-test`;
+    showToast(kind, message, 0);
     const host = document.body.lastElementChild as HTMLElement | null;
+    const snapshot = getToastSnapshotForTesting();
     const result = {
       hostFound: Boolean(host),
-      closedShadow: host?.shadowRoot === null,
-      textLeaked: document.body.innerText.includes('shadow-test'),
+      textLeaked: document.body.innerText.includes(message),
+      ...snapshot,
     };
     hideToast();
     return result;

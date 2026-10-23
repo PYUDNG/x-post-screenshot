@@ -8,9 +8,11 @@ import {
   nativeClosest,
   nativeMatches,
   nativeQuerySelectorAll,
+  nativeRemoveEventListener,
   nativeSetTimeout,
 } from './native';
 import { logger } from './logging';
+import { getPageTheme } from './theme';
 
 const MENU_TRIGGER_SELECTOR = '[data-testid="caret"], button[aria-haspopup="menu"]';
 const MENU_SELECTOR = '[role="menu"]';
@@ -164,13 +166,99 @@ function chooseMenu(trigger: HTMLElement, existing: ReadonlySet<HTMLElement>): H
   );
 }
 
-function createCameraIcon(): SVGSVGElement {
+type MenuHighlightVariant = 'base-ui' | 'legacy';
+
+function detectHighlightVariant(menu: HTMLElement, item: HTMLElement): MenuHighlightVariant {
+  if (item.className.includes('data-highlighted') || menu.hasAttribute('data-base-ui-focusable')) {
+    return 'base-ui';
+  }
+  return 'legacy';
+}
+
+export function attachMenuHighlight(item: HTMLElement, menu: HTMLElement): () => void {
+  const variant = detectHighlightVariant(menu, item);
+  const originalBackground = item.style.backgroundColor;
+  const baseClasses = new Set(item.classList);
+  let pointerInside = false;
+  let focused = false;
+
+  const clearTransientClasses = () => {
+    for (const className of Array.from(item.classList)) {
+      if (!baseClasses.has(className)) {
+        item.classList.remove(className);
+      }
+    }
+  };
+
+  const sync = () => {
+    const active = pointerInside || focused;
+    if (variant === 'base-ui') {
+      if (active) {
+        item.setAttribute('data-highlighted', '');
+      } else {
+        item.removeAttribute('data-highlighted');
+        clearTransientClasses();
+      }
+      return;
+    }
+    item.style.backgroundColor = active
+      ? getPageTheme().dark
+        ? 'rgba(255, 255, 255, 0.03)'
+        : 'rgba(0, 0, 0, 0.03)'
+      : originalBackground;
+    if (!active) {
+      clearTransientClasses();
+    }
+  };
+
+  const onPointerEnter = () => {
+    pointerInside = true;
+    sync();
+  };
+  const onPointerLeave = () => {
+    pointerInside = false;
+    sync();
+  };
+  const onFocus = () => {
+    focused = true;
+    sync();
+  };
+  const onBlur = () => {
+    focused = false;
+    sync();
+  };
+
+  nativeAddEventListener(item, 'pointerenter', onPointerEnter);
+  nativeAddEventListener(item, 'pointerleave', onPointerLeave);
+  nativeAddEventListener(item, 'pointercancel', onPointerLeave);
+  nativeAddEventListener(item, 'focus', onFocus);
+  nativeAddEventListener(item, 'blur', onBlur);
+
+  return () => {
+    nativeRemoveEventListener(item, 'pointerenter', onPointerEnter);
+    nativeRemoveEventListener(item, 'pointerleave', onPointerLeave);
+    nativeRemoveEventListener(item, 'pointercancel', onPointerLeave);
+    nativeRemoveEventListener(item, 'focus', onFocus);
+    nativeRemoveEventListener(item, 'blur', onBlur);
+    pointerInside = false;
+    focused = false;
+    sync();
+  };
+}
+
+function createCameraIcon(templateIcon: Element | null): SVGSVGElement {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('width', '1em');
-  svg.setAttribute('height', '1em');
   svg.setAttribute('fill', 'currentColor');
   svg.setAttribute('aria-hidden', 'true');
+  const templateClass = templateIcon?.getAttribute('class');
+  if (templateClass) {
+    svg.setAttribute('class', templateClass);
+  } else {
+    svg.setAttribute('width', '1.25em');
+    svg.setAttribute('height', '1.25em');
+    svg.style.flex = '0 0 auto';
+  }
   const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
   path.setAttribute('d', CAMERA_PATH);
   svg.append(path);
@@ -190,6 +278,18 @@ function setFirstText(node: Node, text: string): boolean {
   return false;
 }
 
+function chooseMenuTemplate(menu: HTMLElement): HTMLElement | null {
+  const items = nativeQuerySelectorAll<HTMLElement>(menu, ITEM_SELECTOR);
+  return (
+    items.find(
+      (item) => nativeMatches(item, 'div[role="menuitem"]') && !nativeMatches(item, ':hover'),
+    ) ??
+    items.find((item) => nativeMatches(item, 'div[role="menuitem"]')) ??
+    items[0] ??
+    null
+  );
+}
+
 function createMenuItem(template: HTMLElement, label: string): HTMLElement | null {
   const item = nativeApply<HTMLElement>(native.cloneNode, template, [true]);
   item.removeAttribute('id');
@@ -199,9 +299,19 @@ function createMenuItem(template: HTMLElement, label: string): HTMLElement | nul
   item.removeAttribute('data-testid');
   item.setAttribute('role', 'menuitem');
   item.setAttribute('tabindex', '0');
+  for (const attribute of [
+    'data-highlighted',
+    'data-popup-open',
+    'aria-expanded',
+    'aria-controls',
+    'aria-selected',
+    'aria-checked',
+  ]) {
+    item.removeAttribute(attribute);
+  }
 
   const oldIcon = item.querySelector('svg');
-  const newIcon = createCameraIcon();
+  const newIcon = createCameraIcon(oldIcon);
   if (oldIcon) {
     oldIcon.replaceWith(newIcon);
   } else {
@@ -231,11 +341,10 @@ function injectMenu(
     return true;
   }
 
-  const template = menu.querySelector('div[role="menuitem"]') ?? menu.querySelector(ITEM_SELECTOR);
-  if (!template || template.nodeType !== 1) {
+  const templateElement = chooseMenuTemplate(menu);
+  if (!templateElement) {
     return false;
   }
-  const templateElement = template as HTMLElement;
   const label = translate(getLocale(), 'menuSavePost');
   const item = createMenuItem(templateElement, label);
   if (!item) {
@@ -267,6 +376,7 @@ function injectMenu(
   };
 
   const attach = (node: HTMLElement) => {
+    attachMenuHighlight(node, menu);
     nativeAddEventListener(node, 'click', (event) => {
       event.preventDefault();
       activate();

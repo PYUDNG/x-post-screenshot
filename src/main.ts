@@ -63,7 +63,7 @@ async function runCapture(target: CaptureTarget): Promise<void> {
       throw new XpsError('download-failed', 'download', 'Could not save the screenshot');
     }
     if (result.partial) {
-      showToast('success', translate(getLocale(), 'toastSavedPartial'), 5000);
+      showToast('partial', translate(getLocale(), 'toastSavedPartial'), 5000);
     } else {
       showToast('success', translate(getLocale(), 'toastSaved'), 3200);
     }

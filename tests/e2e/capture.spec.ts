@@ -28,6 +28,59 @@ test('injects the save item into a post menu', async ({ page }) => {
   expect(await page.evaluate(() => window.__xpsTest.menuClicked)).toBe(true);
 });
 
+test('aligns the injected icon and text with the native menu item', async ({ page }) => {
+  await page.locator('#caret').click();
+  await page.getByRole('menuitem', { name: '保存帖子截图' }).waitFor();
+  const alignment = await page.evaluate(() => {
+    const items = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+    const nativeItem = items.find((item) => item.innerText.includes('Embed post'));
+    const ourItem = items.find((item) => item.innerText.includes('保存帖子截图'));
+    if (!nativeItem || !ourItem) {
+      throw new Error('Menu items are missing');
+    }
+    const nativeText = nativeItem.querySelector<HTMLElement>('.menu-text')!;
+    const ourText = ourItem.querySelector<HTMLElement>('.menu-text')!;
+    const nativeIcon = nativeItem.querySelector<SVGElement>('.menu-icon svg')!;
+    const ourIcon = ourItem.querySelector<SVGElement>('.menu-icon svg')!;
+    return {
+      nativeTextLeft: nativeText.getBoundingClientRect().left,
+      ourTextLeft: ourText.getBoundingClientRect().left,
+      nativeIconWidth: nativeIcon.getBoundingClientRect().width,
+      ourIconWidth: ourIcon.getBoundingClientRect().width,
+    };
+  });
+  expect(Math.abs(alignment.ourTextLeft - alignment.nativeTextLeft)).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(alignment.ourIconWidth - alignment.nativeIconWidth)).toBeLessThanOrEqual(0.5);
+});
+
+test('matches native hover feedback and restores it on leave', async ({ page }) => {
+  await page.locator('#caret').click();
+  const ourItem = page.getByRole('menuitem', { name: '保存帖子截图' });
+  const nativeItem = page.getByRole('menuitem', { name: 'Embed post' });
+  await ourItem.hover();
+  const ourBackground = await ourItem.evaluate(
+    (element) => getComputedStyle(element).backgroundColor,
+  );
+  await nativeItem.hover();
+  const nativeBackground = await nativeItem.evaluate(
+    (element) => getComputedStyle(element).backgroundColor,
+  );
+  expect(ourBackground).toBe('rgba(0, 0, 0, 0.03)');
+  expect(ourBackground).toBe(nativeBackground);
+  await page.mouse.move(0, 0);
+  await expect
+    .poll(() => ourItem.evaluate((element) => getComputedStyle(element).backgroundColor))
+    .toBe('rgba(0, 0, 0, 0)');
+});
+
+test('excludes the detail footer row and restores it afterwards', async ({ page }) => {
+  const result = await page.evaluate(() => window.__xpsTest.detailCapture());
+  expect(result.captureHeight).toBeLessThan(result.beforeHeight);
+  expect(result.footerSpace).toBeGreaterThan(0);
+  expect(Math.abs(result.beforeHeight - result.captureHeight - result.footerSpace)).toBeLessThan(2);
+  expect(result.footerRestored).toBe(true);
+});
+
 test('downloads through a Blob URL without an empty file', async ({ page }) => {
   const downloadPromise = page.waitForEvent('download');
   await page.locator('#download-test').click();
@@ -38,9 +91,19 @@ test('downloads through a Blob URL without an empty file', async ({ page }) => {
   expect(statSync(path!).size).toBeGreaterThan(0);
 });
 
-test('uses an isolated closed shadow root for the toast', async ({ page }) => {
-  const result = await page.evaluate(() => window.__xpsTest.toast());
-  expect(result.hostFound).toBe(true);
-  expect(result.closedShadow).toBe(true);
-  expect(result.textLeaked).toBe(false);
+test('uses an isolated closed shadow root with state-specific toast icons', async ({ page }) => {
+  for (const [kind, icon] of [
+    ['progress', 'spinner'],
+    ['success', 'success'],
+    ['partial', 'partial'],
+    ['error', 'error'],
+  ] as const) {
+    const result = await page.evaluate((kind) => window.__xpsTest.toast(kind), kind);
+    expect(result.hostFound).toBe(true);
+    expect(result.closedShadow).toBe(true);
+    expect(result.textLeaked).toBe(false);
+    expect(result.kind).toBe(kind);
+    expect(result.icon).toBe(icon);
+    expect(result.text).toBe(`${kind}-test`);
+  }
 });
