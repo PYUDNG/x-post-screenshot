@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+test-results/
+playwright-report/
+.playwright-mcp/
+*.log
+pnpm-debug.log*
+.DS_Store
+Thumbs.db
+*.tgz
+.vite/
