@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.3] - 2026-10-23
+
+### Fixed
+
+- Put the userscript metadata block at the absolute start of both builds so Greasyfork accepts the submitted file. The license banner now follows the metadata block.
+
 ## [0.1.2] - 2026-10-23
 
 ### Added
