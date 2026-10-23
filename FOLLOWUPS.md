@@ -3,53 +3,88 @@
 Status: **open, intentionally not implemented yet**.
 Project version: `0.1.1`.
 Suggested next version: `0.1.2` (patch).
-Last investigation: 2026-10-23 against the public X DOM and the currently served X
-front-end bundle. The logged-in visual checks are still required before closing
-these items.
+
+Last investigation: 2026-10-23. The two X menu variants were checked against
+different sessions:
+
+- the logged-in Edge Profile (`x.com/home`, Simplified Chinese, light theme)
+  currently uses the legacy DOM with `data-testid="caret"` and
+  `div[data-testid="Dropdown"]`;
+- the public logged-out Playwright Chromium uses the newer ARIA/Base UI menu.
+
+Both variants must remain supported. The logged-in Edge check is the relevant
+one for the reported hover and detail-page issues.
 
 ## 1. Injected menu item has no native hover/focus highlight
 
 ### Observed
 
-The injected **保存帖子截图** item is visible and clickable, but moving the mouse over it does not produce the native X menu item hover background. Keyboard focus highlighting should also be checked.
+The injected **保存帖子截图** item is visible and clickable, but moving the mouse over it does not produce the native X menu item hover background.
 
-### Confirmed root cause
+### Confirmed root cause: two different mechanisms
 
-Current X menus use Base UI. A native item has a class equivalent to:
+#### Legacy menu in the logged-in Edge Profile
+
+The native item receives a generated class only while it is hovered. In the
+observed build it was:
+
+```css
+.r-1panhkp {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+```
+
+The item also has shared transition classes for `background-color` and
+`box-shadow`. The cloned item has the base classes but never receives the
+hover-only class, so it stays transparent.
+
+The page does define `--x-hover-subtle`, but in this legacy menu it resolves to
+`rgba(0, 0, 0, 0.04)`, while the native hovered item uses
+`rgba(0, 0, 0, 0.03)`. The variable therefore cannot simply be reused as the
+legacy hover color.
+
+A programmatically focused native item had `outline-style: none` and no
+background. Keyboard navigation likely applies a highlight through component
+state rather than `:focus-visible`; this still needs a real keyboard test.
+
+#### Newer ARIA/Base UI menu
+
+The native item's class is equivalent to:
 
 ```text
 data-highlighted:hover:bg-[var(--x-hover-subtle)]
 focus-visible:bg-[var(--x-hover-subtle)]
 ```
 
-Base UI adds `data-highlighted` only to menu items it owns. The cloned item keeps
-the class string, but it is outside the React/Base UI tree and never receives
-that state, so the selector cannot match. With a temporary clone on the live
-site, adding `data-highlighted` while hovering reproduced the native background
-(`rgba(0, 0, 0, 0.04)` in the light theme). The color comes from X's
-`--x-hover-subtle` variable, so no hard-coded theme colors are needed.
+Base UI adds `data-highlighted` only to menu items it owns. The cloned item
+keeps the class string but never receives that state. In a temporary clone on
+the live public site, adding `data-highlighted` while hovering reproduced the
+native background `rgba(0, 0, 0, 0.04)`.
 
 ### Candidate direction
 
-Keep the item-scoped approach and reuse X's own classes:
+Implement one item-scoped highlight helper and call it from
+`pointerenter` / `pointerleave` / `focus` / `blur` on the current cloned item:
 
+- detect the newer variant from its `data-highlighted` class token or Base UI
+  menu attributes, and then toggle `data-highlighted`;
+- for the legacy variant, set and clear an inline `backgroundColor` using the
+  legacy theme colors (`rgba(0, 0, 0, 0.03)` in light and the corresponding
+  white-alpha color in dark themes), preserving any original inline value;
+- keep the item's own transition class so the legacy transition remains;
 - remove transient state copied from the template (`data-highlighted`,
   `data-popup-open`, stale `aria-expanded` / `aria-controls` as applicable);
-- add `pointerenter` / `pointerleave` / `focus` / `blur` handlers to the cloned
-  item that set and clear `data-highlighted`;
-- rely on the cloned class for the background, transition and
-  `focus-visible` behavior; do not add a global stylesheet;
-- only add a tiny inline fallback for a legacy menu variant if that variant
-  lacks equivalent hover/focus rules.
+- attach the handlers again when `reinject()` replaces the item.
 
-The handlers must be attached again when `reinject()` replaces the item, and
-must not change attributes on native neighboring items.
+Do not add a global stylesheet or modify neighboring native items. Verify the
+dark-theme legacy color on a real page before hard-coding it; if a stable X
+theme token is available, prefer that.
 
 ### Remaining investigation
 
-- Verify the old logged-in DOM variant (`[data-testid="caret"]` /
-  `div[data-testid="Dropdown"]`) still applies its hover styling through CSS.
-- Check keyboard focus in light, dim and lights-out themes.
+- Test the legacy item's keyboard highlight by navigating the menu with the
+  keyboard, not by calling `focus()`.
+- Check light, dim and lights-out themes.
 
 ### Acceptance
 
@@ -103,47 +138,59 @@ On a post detail page, the captured PNG includes the last row:
 相关 ↓                         查看引用 →
 ```
 
-The user does not want this row in the screenshot. The author, text, media, date/view count, and engagement action bar should remain.
+The user does not want this row in the screenshot. The author, text, media,
+date/view count, and engagement action bar should remain.
 
-### Corrected identification
+### Confirmed structure in the logged-in Edge Profile
 
-The row is not a "related posts" footer. The left side is the **reply sort
-dropdown**, currently showing the localized "Relevant" mode (`相关` in
-Simplified Chinese), and the right side is **View quotes** / **View activity**.
-X's current `focal-tweet-results` bundle renders it as a row with classes
-equivalent to:
+The row is inside the captured post `<article>`. For a post with quotes, the
+quote link has this DOM ancestry:
 
 ```text
-mt-2 flex items-center justify-between gap-4
+article
+└─ ... (post body)
+   └─ div (engagement bar + footer container)
+      └─ div (row)
+         ├─ div > div > button[aria-haspopup="menu"]  ← reply sort: 相关 ↓
+         └─ div > a[href$="/quotes"]                  ← 查看引用 →
 ```
 
-The right link is `${tweetHref}/quotes` and its label is `View quotes`, or
-`View activity` when the viewer is the post author. The left control's
-accessible label is localized, for example `排序回复：相关`.
+The row is the quote link's **grandparent**, not its direct parent. In the
+observed DOM it had:
+
+- text `相关\n查看引用`;
+- width 566 px and height 16.5 px;
+- two direct children: a sort-control wrapper and a quote-link wrapper.
+
+Temporarily setting `display: none !important` on that row reduced the target
+article height from `829.46875` to `800.96875` px (`28.5` px including layout
+spacing). The engagement counts remained present, and restoring the inline
+style returned the article to its original height.
+
+On a reply detail page without a quotes link, no `相关` row, quote link, or
+unlabeled menu trigger was rendered. The legacy UI therefore appears to omit
+this row when there is nothing to disclose; still confirm the no-quotes case
+across variants before finalizing a fallback.
 
 ### Candidate direction
 
 - Prefer the quote link over visible text: find an anchor within the target
-  `<article>` whose path ends with `/status/<id>/quotes` (also accept the
-  `_engagements/quotes` route), and use its parent element as the row.
-- Guard the match so a quote link belonging to a nested quoted post cannot hide
-  the outer post's content.
-- For a post with no quotes link, fall back to the localized sort-trigger
-  label or the row's structural position. Do not match the bare word `相关`:
-  it is the current sort mode and is not a stable label.
-- Hide the whole row before measuring the article, not only the quotes anchor.
-  Use the existing restore transaction with `display: none !important`, and
-  restore the original inline style in `finally`.
+  `<article>` whose path matches the target status's `/quotes` or
+  `_engagements/quotes` route.
+- Collect the quote link's wrapper chain, not just `link.parentElement`. The
+  legacy DOM needs the grandparent; the newer DOM may use a different number
+  of wrappers.
+- Select the nearest ancestor that contains both the quote link and the reply
+  sort trigger, but not the engagement action bar. Do not use the bare word
+  `相关` as the selector.
+- Hide the whole row before measuring, using the existing restore transaction
+  with `display: none !important`, and restore the original inline style in
+  `finally`.
+- If a variant renders the sort row without a quotes link, add a guarded
+  fallback based on that variant's structural evidence rather than guessing
+  from localized text.
 
 Do not hide the engagement action bar or any media.
-
-### Remaining investigation
-
-- Confirm on a logged-in detail page whether the row is a descendant of the
-  same `<article>` that is captured. The public logged-out DOM does not render
-  this row, so this ancestor check is important.
-- Check a post with quotes, a post without quotes, and a post whose sort mode
-  is not `Relevant`.
 
 ### Acceptance
 
@@ -157,8 +204,9 @@ Do not hide the engagement action bar or any media.
 
 1. Menu hover/focus state (small, isolated change).
 2. Toast `partial` kind and inline icons (isolated UI change).
-3. Detail-page row exclusion (touches the capture transaction; verify the
-   logged-in ancestor structure first).
+3. Detail-page row exclusion (touches the capture transaction; use the
+   logged-in legacy DOM as the primary acceptance target and preserve the
+   newer variant).
 
 Add regression coverage for each item, then run `pnpm check` before the release
 commit and version bump.
