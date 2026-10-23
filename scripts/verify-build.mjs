@@ -47,6 +47,15 @@ if (errors.length === 0) {
   const githubMeta = metadata(github);
   const greasyforkMeta = metadata(greasyfork);
 
+  for (const [name, source] of [
+    ['github', github],
+    ['greasyfork', greasyfork],
+  ]) {
+    if (!source.startsWith('// ==UserScript==')) {
+      fail(`${name} must start with // ==UserScript==`);
+    }
+  }
+
   for (const [name, meta] of [
     ['github', githubMeta],
     ['greasyfork', greasyforkMeta],

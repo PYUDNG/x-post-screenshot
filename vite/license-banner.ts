@@ -14,9 +14,22 @@ export function licenseBannerPlugin(banner: string): Plugin {
         }
         const path = resolve(dist, name);
         const code = readFileSync(path, 'utf8');
-        if (!code.startsWith(banner)) {
-          writeFileSync(path, `${banner}\n${code}`);
+        const metadataStart = code.indexOf('// ==UserScript==');
+        if (metadataStart < 0) {
+          throw new Error(`${name} does not contain a userscript metadata block`);
         }
+        const source = code.slice(metadataStart).replace(banner, '');
+        const marker = '// ==/UserScript==';
+        const markerIndex = source.indexOf(marker);
+        if (markerIndex < 0) {
+          throw new Error(`${name} has an incomplete userscript metadata block`);
+        }
+        const insertAt = markerIndex + marker.length;
+        const newline = source[insertAt] === '\r' ? '\r\n' : '\n';
+        writeFileSync(
+          path,
+          `${source.slice(0, insertAt)}${newline}${banner}${source.slice(insertAt)}`,
+        );
       }
     },
   };
