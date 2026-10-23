@@ -67,7 +67,12 @@ document.querySelector<HTMLButtonElement>('#download-test')?.addEventListener('c
 
 caret?.addEventListener('click', () => {
   const menuHost = document.querySelector<HTMLElement>('#menu-host');
-  if (!menuHost || menuHost.querySelector('[role="menu"]')) {
+  if (!menuHost) {
+    return;
+  }
+  const existingMenu = menuHost.querySelector('[role="menu"]');
+  if (existingMenu) {
+    existingMenu.remove();
     return;
   }
   const menu = document.createElement('div');

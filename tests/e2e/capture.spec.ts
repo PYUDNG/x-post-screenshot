@@ -17,7 +17,7 @@ test('captures images, video frames and restores page state', async ({ page }) =
   expect(result.scrollRestored).toBe(true);
 });
 
-test('injects the save item into a post menu', async ({ page }) => {
+test('injects the save item into a post menu and closes it after activation', async ({ page }) => {
   await page.evaluate(() => {
     window.__xpsTest.menuClicked = false;
   });
@@ -26,6 +26,7 @@ test('injects the save item into a post menu', async ({ page }) => {
   await expect(menuItem).toBeVisible();
   await menuItem.click();
   expect(await page.evaluate(() => window.__xpsTest.menuClicked)).toBe(true);
+  await expect(page.locator('#menu-host [role="menu"]')).toHaveCount(0);
 });
 
 test('aligns the injected icon and text with the native menu item', async ({ page }) => {

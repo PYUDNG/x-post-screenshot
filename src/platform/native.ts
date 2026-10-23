@@ -61,6 +61,7 @@ export const native = {
   toBlob: pageWindow.HTMLCanvasElement.prototype.toBlob,
   getContext: pageWindow.HTMLCanvasElement.prototype.getContext,
   anchorClick: pageWindow.HTMLAnchorElement.prototype.click,
+  elementClick: pageWindow.HTMLElement.prototype.click,
   createObjectURL: pageWindow.URL.createObjectURL,
   revokeObjectURL: pageWindow.URL.revokeObjectURL,
   Response: nativeResponse,
@@ -119,6 +120,10 @@ export function nativeClosest<T extends Element = Element>(
 
 export function nativeMatches(element: Element, selector: string): boolean {
   return call<boolean>(native.matches, element, [selector]);
+}
+
+export function nativeClickElement(element: HTMLElement): void {
+  call<void>(native.elementClick, element, []);
 }
 
 export function nativeGetComputedStyle(element: Element): CSSStyleDeclaration {

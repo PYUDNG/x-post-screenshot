@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Close the native X post menu after activating the screenshot item by toggling its trigger. X ignores programmatic Escape key events, which left the menu open.
+
 ## [0.1.4] - 2026-10-23
 
 ### Changed

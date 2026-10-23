@@ -5,6 +5,7 @@ import {
   nativeAddEventListener,
   nativeApply,
   nativeClearTimeout,
+  nativeClickElement,
   nativeClosest,
   nativeMatches,
   nativeQuerySelectorAll,
@@ -356,15 +357,17 @@ function injectMenu(
   let timeoutId: number | null = null;
 
   const closeMenu = () => {
+    if (!menu.isConnected) {
+      return;
+    }
+    const rect = menu.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) {
+      return;
+    }
     try {
-      menu.dispatchEvent(
-        new native.pageWindow.KeyboardEvent('keydown', {
-          key: 'Escape',
-          code: 'Escape',
-          bubbles: true,
-          cancelable: true,
-        }),
-      );
+      if (trigger.isConnected) {
+        nativeClickElement(trigger);
+      }
     } catch {
       // Closing the menu is best-effort; the capture target is already stored.
     }
