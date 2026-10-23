@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.4] - 2026-10-23
+
+### Changed
+
+- Redesigned the userscript icon around the official X mark, with two restrained right-angle capture corners and more breathing room around the mark.
+
 ## [0.1.3] - 2026-10-23
 
 ### Fixed
