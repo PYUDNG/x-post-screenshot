@@ -9,6 +9,7 @@ The project follows [Semantic Versioning](https://semver.org/).
 ### Fixed
 
 - Close the native X post menu after activating the screenshot item by toggling its trigger. X ignores programmatic Escape key events, which left the menu open.
+- Preserve clipped CJK text in animated counters such as view counts by exposing overflow and disabling wrapping during capture.
 
 ## [0.1.4] - 2026-10-23
 

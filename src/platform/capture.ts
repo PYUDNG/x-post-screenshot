@@ -169,6 +169,55 @@ function videoFrame(video: HTMLVideoElement): string | null {
 }
 
 const QUOTE_PATH_PATTERN = /\/status\/(\d+)\/(?:_engagements\/)?quotes(?:[?#]|$)/;
+const CJK_TEXT_PATTERN = /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/;
+
+export function exposeTransitionTextOverflow(
+  article: HTMLElement,
+  restore: Array<() => void>,
+): number {
+  let exposed = 0;
+  const transitions = nativeQuerySelectorAll<HTMLElement>(
+    article,
+    '[data-testid="app-text-transition-container"]',
+  );
+  for (const transition of transitions) {
+    if (!CJK_TEXT_PATTERN.test(transition.textContent ?? '')) {
+      continue;
+    }
+    const parent = transition.parentElement;
+    if (!parent) {
+      continue;
+    }
+    const whiteSpace = transition.style.getPropertyValue('white-space');
+    const whiteSpacePriority = transition.style.getPropertyPriority('white-space');
+    transition.style.setProperty('white-space', 'nowrap', 'important');
+    restore.push(() => {
+      if (whiteSpace) {
+        transition.style.setProperty('white-space', whiteSpace, whiteSpacePriority);
+      } else {
+        transition.style.removeProperty('white-space');
+      }
+    });
+    for (const element of [transition, parent]) {
+      const style = nativeGetComputedStyle(element);
+      if (style.overflow === 'visible') {
+        continue;
+      }
+      const overflow = element.style.getPropertyValue('overflow');
+      const priority = element.style.getPropertyPriority('overflow');
+      element.style.setProperty('overflow', 'visible', 'important');
+      restore.push(() => {
+        if (overflow) {
+          element.style.setProperty('overflow', overflow, priority);
+        } else {
+          element.style.removeProperty('overflow');
+        }
+      });
+      exposed += 1;
+    }
+  }
+  return exposed;
+}
 
 export function findStatusQuoteRow(
   article: HTMLElement,
@@ -299,6 +348,12 @@ export async function captureArticle(
     await waitForFonts();
     freezeScrollableContainers(article, restore);
     inlineSvgUseReferences(article, restore);
+    const exposedTransitions = exposeTransitionTextOverflow(article, restore);
+    if (exposedTransitions > 0) {
+      logger.debugLog('transition-overflow-exposed', {
+        data: { count: exposedTransitions },
+      });
+    }
     partialRef.partial = addVideoOverlays(article, restore);
     hideDetailQuoteRow(article, target.statusId, restore);
 
