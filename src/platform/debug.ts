@@ -25,10 +25,7 @@ let apiAttachedTo: Record<string, unknown> | null = null;
 let optionsRef: DiagnosticsOptions | null = null;
 
 function debugTarget(): Record<string, unknown> {
-  return (typeof unsafeWindow !== 'undefined' ? unsafeWindow : globalThis) as unknown as Record<
-    string,
-    unknown
-  >;
+  return native.pageWindow as unknown as Record<string, unknown>;
 }
 
 function diagnosticsContext(): { locale: Locale; theme: 'light' | 'dark'; page: string } {

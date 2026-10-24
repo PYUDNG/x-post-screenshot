@@ -7,6 +7,11 @@ const projectRoot = fileURLToPath(new URL('.', import.meta.url));
 export default defineConfig({
   root: fileURLToPath(new URL('./tests/e2e/fixture', import.meta.url)),
   plugins: [htmlToImageRuntimePlugin()],
+  resolve: {
+    alias: {
+      $: fileURLToPath(new URL('./tests/support/gm-client.ts', import.meta.url)),
+    },
+  },
   optimizeDeps: {
     exclude: ['html-to-image'],
   },

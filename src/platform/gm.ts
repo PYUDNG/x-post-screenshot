@@ -1,4 +1,12 @@
-import { native } from './native';
+import {
+  GM_download,
+  GM_getValue,
+  GM_registerMenuCommand,
+  GM_setClipboard,
+  GM_setValue,
+  GM_xmlhttpRequest,
+} from '$';
+import { native, nativeClearTimeout, nativeSetTimeout } from './native';
 
 export interface GmRequestResult {
   status: number;
@@ -24,32 +32,10 @@ interface GmAbortHandle {
   abort: () => void;
 }
 
-interface GmResponseEvent {
-  status: number;
-  statusText: string;
-  responseHeaders: string;
-  response: ArrayBuffer;
-  finalUrl?: string;
-}
-
-interface GmDownloadError {
-  error?: string;
-  details?: string;
-}
-
-function getGlobal(name: string): unknown {
-  return (globalThis as Record<string, unknown>)[name];
-}
-
-export function hasGmRequest(): boolean {
-  return typeof getGlobal('GM_xmlhttpRequest') === 'function';
-}
-
 export function gmGetValue<T>(key: string, fallback: T): T {
   try {
-    const getter = getGlobal('GM_getValue');
-    if (typeof getter === 'function') {
-      return (getter as (name: string, defaultValue: T) => T)(key, fallback);
+    if (typeof GM_getValue === 'function') {
+      return GM_getValue<T>(key, fallback);
     }
   } catch {
     // Fall through to the in-memory default.
@@ -59,9 +45,8 @@ export function gmGetValue<T>(key: string, fallback: T): T {
 
 export function gmSetValue(key: string, value: unknown): boolean {
   try {
-    const setter = getGlobal('GM_setValue');
-    if (typeof setter === 'function') {
-      (setter as (name: string, nextValue: unknown) => void)(key, value);
+    if (typeof GM_setValue === 'function') {
+      GM_setValue(key, value);
       return true;
     }
   } catch {
@@ -72,9 +57,8 @@ export function gmSetValue(key: string, value: unknown): boolean {
 
 export function gmRegisterMenuCommand(name: string, onClick: () => void): boolean {
   try {
-    const register = getGlobal('GM_registerMenuCommand');
-    if (typeof register === 'function') {
-      (register as (label: string, listener: () => void) => unknown)(name, onClick);
+    if (typeof GM_registerMenuCommand === 'function') {
+      GM_registerMenuCommand(name, onClick);
       return true;
     }
   } catch {
@@ -85,9 +69,8 @@ export function gmRegisterMenuCommand(name: string, onClick: () => void): boolea
 
 export function gmSetClipboard(text: string, info = 'text'): boolean {
   try {
-    const setClipboard = getGlobal('GM_setClipboard');
-    if (typeof setClipboard === 'function') {
-      (setClipboard as (data: string, type?: string) => void)(text, info);
+    if (typeof GM_setClipboard === 'function') {
+      GM_setClipboard(text, info);
       return true;
     }
   } catch {
@@ -97,25 +80,25 @@ export function gmSetClipboard(text: string, info = 'text'): boolean {
 }
 
 export function gmDownloadBlob(options: GmDownloadOptions): Promise<boolean> {
-  const download = getGlobal('GM_download');
-  if (typeof download !== 'function') {
+  if (typeof GM_download !== 'function') {
     return Promise.resolve(false);
   }
 
   return new Promise((resolve) => {
     let settled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    let timer: number | undefined;
     let objectUrl = '';
+    const timeoutMs = options.timeoutMs ?? 30_000;
     const finish = (ok: boolean) => {
       if (settled) {
         return;
       }
       settled = true;
       if (timer !== undefined) {
-        clearTimeout(timer);
+        nativeClearTimeout(timer);
       }
       if (objectUrl) {
-        setTimeout(() => {
+        nativeSetTimeout(() => {
           try {
             native.URL.revokeObjectURL(objectUrl);
           } catch {
@@ -128,16 +111,18 @@ export function gmDownloadBlob(options: GmDownloadOptions): Promise<boolean> {
 
     try {
       objectUrl = native.URL.createObjectURL(options.blob);
-      (download as (details: unknown) => GmAbortHandle)({
+      GM_download({
         url: objectUrl,
         name: options.name,
         saveAs: false,
-        timeout: options.timeoutMs ?? 30_000,
+        timeout: timeoutMs,
         onload: () => finish(true),
-        onerror: (_error: GmDownloadError) => finish(false),
+        onerror: () => finish(false),
         ontimeout: () => finish(false),
       });
-      timer = setTimeout(() => finish(false), (options.timeoutMs ?? 30_000) + 5_000);
+      if (!settled) {
+        timer = nativeSetTimeout(() => finish(false), timeoutMs + 5_000);
+      }
     } catch {
       finish(false);
     }
@@ -145,8 +130,7 @@ export function gmDownloadBlob(options: GmDownloadOptions): Promise<boolean> {
 }
 
 export function gmRequestArrayBuffer(options: GmRequestOptions): Promise<GmRequestResult> {
-  const request = getGlobal('GM_xmlhttpRequest');
-  if (typeof request !== 'function') {
+  if (typeof GM_xmlhttpRequest !== 'function') {
     return Promise.reject(new Error('GM_xmlhttpRequest is not available'));
   }
 
@@ -180,13 +164,13 @@ export function gmRequestArrayBuffer(options: GmRequestOptions): Promise<GmReque
     }
 
     try {
-      abortHandle = (request as (details: unknown) => GmAbortHandle)({
+      abortHandle = GM_xmlhttpRequest({
         method: 'GET',
         url: options.url,
         responseType: 'arraybuffer',
         timeout: options.timeoutMs,
         anonymous: true,
-        onload: (response: GmResponseEvent) => {
+        onload: (response) => {
           finish(() =>
             resolve({
               status: response.status,

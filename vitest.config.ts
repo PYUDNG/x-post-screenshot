@@ -1,8 +1,14 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 import { htmlToImageRuntimePlugin } from './vite/html-to-image-runtime.ts';
 
 export default defineConfig({
   plugins: [htmlToImageRuntimePlugin()],
+  resolve: {
+    alias: {
+      $: fileURLToPath(new URL('./tests/support/gm-client.ts', import.meta.url)),
+    },
+  },
   optimizeDeps: {
     exclude: ['html-to-image'],
   },

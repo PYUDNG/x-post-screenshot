@@ -1,7 +1,9 @@
+import { unsafeWindow } from '$';
+
 type AnyFunction = (...args: never[]) => unknown;
 
 const fallbackWindow = typeof window !== 'undefined' ? window : undefined;
-const pageWindow = (typeof unsafeWindow !== 'undefined' ? unsafeWindow : fallbackWindow) as
+const pageWindow = ((unsafeWindow as (Window & typeof globalThis) | undefined) ?? fallbackWindow) as
   (Window & typeof globalThis) | undefined;
 
 if (!pageWindow) {
